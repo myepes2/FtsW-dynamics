@@ -1,0 +1,16 @@
+name: md-distance-analysis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - mdanalysis
+  - nglview
+  - pip
+  - pip:
+      - mdakit-sasa

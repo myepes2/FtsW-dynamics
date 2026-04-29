@@ -105,6 +105,17 @@ def load_metadata_json(out_dir: str | Path) -> tuple[dict, Path | None]:
     out_dir = Path(out_dir).expanduser().resolve()
     json_files = sorted(out_dir.glob("*.json"))
 
+    # Prefer config JSONs if present (single-source-of-truth style):
+    # e.g. '{short_var_name}_config.json'
+    for p in json_files:
+        if re.search(r"_config\.json$", p.name, re.IGNORECASE):
+            try:
+                meta = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(meta, dict):
+                    return meta, p
+            except Exception:
+                pass
+
     meta_file = None
     for p in json_files:
         if re.search(r"metadata", p.name, re.IGNORECASE):
@@ -135,26 +146,67 @@ def build_data_dict(out_dir: str | Path, meta: dict, short_var_name: str) -> dic
             if v:
                 data_dict[str(k)] = str(Path(v))
 
-    if not data_dict and short_var_name:
-        inferred = sorted(out_dir.glob(f"*_{short_var_name}.csv"))
-        for p in inferred:
-            sim = p.name[: -len(f"_{short_var_name}.csv")]
-            data_dict[sim] = str(p)
+    # Augment with any CSVs present in the out_dir. This is important because
+    # older metadata JSONs can have a partial/outdated data_dict.
+    inferred: list[Path] = []
+    if short_var_name:
+        inferred.extend(sorted(out_dir.glob(f"*_{short_var_name}.csv")))
+    inferred.extend(sorted(out_dir.glob("*.csv")))
 
-    if not data_dict:
-        inferred = sorted(out_dir.glob("*.csv"))
-        for p in inferred:
-            data_dict[p.stem] = str(p)
+    for p in inferred:
+        # Prefer the sim_number prefix (before the first underscore) so both
+        # '53_Foo.csv' and '53_Foo_Bar.csv' map to '53'.
+        prefix = p.name.split("_", 1)[0]
+        if prefix and prefix not in data_dict:
+            data_dict[prefix] = str(p)
+
+        # Also keep a fallback key for unusual filenames if it doesn't collide.
+        stem = p.stem
+        if stem and stem not in data_dict:
+            data_dict[stem] = str(p)
 
     return data_dict
+
+
+def infer_axis_label(*, meta: dict, var_name: str, unit_tag: str) -> str:
+    res1 = str(meta.get("res1", ""))
+    res2 = str(meta.get("res2", ""))
+
+    is_ca = bool(re.search(r"\bname\s+CA\b", res1)) and bool(re.search(r"\bname\s+CA\b", res2))
+    base = str(var_name).strip() or "X"
+
+    plot_tag = str(meta.get("plot_tag", "")).strip()
+    if not plot_tag and is_ca:
+        plot_tag = "Cα - Cα"
+
+    unit_tag = str(unit_tag).strip()
+    if not unit_tag:
+        return f"{base} {plot_tag}".strip() if plot_tag else base
+
+    # Insert the tag between var_name and the quantity (e.g. 'distance') so the
+    # tag can be swapped independently (e.g. Cα - Cα vs. H-bond).
+    if plot_tag:
+        label = f"{base} {plot_tag} {unit_tag}".strip()
+    else:
+        label = f"{base} {unit_tag}".strip()
+    if len(label) > 28:
+        if plot_tag:
+            return f"{base}\n{plot_tag} {unit_tag}".strip()
+        return f"{base}\n{unit_tag}".strip()
+    return label
 
 
 def load_series(data_dict: dict[str, str], stack_list: list[str], plot_type: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     series_by_sim: dict[str, tuple[np.ndarray, np.ndarray]] = {}
 
     for sim_number in stack_list:
+        sim_number = str(sim_number)
         if sim_number not in data_dict:
-            raise KeyError(f"Simulation '{sim_number}' not found in data_dict")
+            keys_preview = ", ".join(list(data_dict.keys())[:25])
+            raise KeyError(
+                f"Simulation '{sim_number}' not found in data_dict. "
+                f"Available keys (first 25): [{keys_preview}]"
+            )
 
         df_x = pd.read_csv(data_dict[sim_number])
         if "Time" not in df_x.columns:
@@ -293,13 +345,165 @@ def plot_histogram(
     max_hist = (count_max + legend_height) * 1.2
     axs.set_ylim(0, max_hist)
 
-    fig.tight_layout()
+    fig.tight_layout(pad=0.9, w_pad=0.8, h_pad=0.8)
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, format="png", dpi=300, bbox_inches="tight")
     plt.show()
 
     return plot_min, plot_max
+
+
+def plot_traces_plus_side_hist(
+    *,
+    series_by_sim: dict[str, tuple[np.ndarray, np.ndarray]],
+    stack_list: list[str],
+    style_map: dict[str, dict[str, str]],
+    mixed_apo: bool,
+    out_path: str | Path,
+    title: str,
+    ylabel: str,
+    y_lim: tuple[float, float],
+    scale: float = 4.0,
+    smooth_window_frames: int = 10,
+    num_bins: int = 30,
+    width_ratios: tuple[float, float] = (2.75, 1.25),
+    trace_alpha: float = 0.5,
+    hist_alpha: float = 0.5,
+    divider_lw: float = 3.0,
+    legend_ncol: int = 1,
+    y_pad_frac: float | tuple[float, float] = 0.08,
+) -> None:
+    # The standalone histogram/traces plots in this module intentionally use
+    # large text (scaled for manuscript figures). For the merged trace+hist
+    # layout, those same sizes become unreadable due to crowding/clipping.
+    # Use a gentler font scaling here.
+    plt.rcParams.update({
+        "axes.titlesize": 6 * scale,
+        "axes.labelsize": 5 * scale,
+        "xtick.labelsize": 5 * scale,
+        "ytick.labelsize": 5 * scale,
+        "legend.fontsize": 4 * scale,
+        "figure.titlesize": 6 * scale,
+        "font.size": 5 * scale,
+    })
+
+    # If the caller passes a full axis label like:
+    #   'FtsW L198 - L236\nCα - Cα distance (Å)'
+    # it is too large when rotated vertically. Keep the *units* on the y-axis
+    # and rely on the title/legend for context.
+    if isinstance(ylabel, str) and "\n" in ylabel:
+        ylabel = ylabel.split("\n")[-1].strip() or ylabel
+
+    y_min, y_max = float(y_lim[0]), float(y_lim[1])
+    if isinstance(y_pad_frac, (tuple, list)) and len(y_pad_frac) == 2:
+        y_pad_low = float(y_pad_frac[0])
+        y_pad_high = float(y_pad_frac[1])
+    else:
+        y_pad_low = float(y_pad_frac)
+        y_pad_high = float(y_pad_frac)
+
+    y_range = max(1e-12, y_max - y_min)
+    y_lim_plot = (y_min - y_pad_low * y_range, y_max + y_pad_high * y_range)
+    bins = np.linspace(y_min, y_max, int(num_bins) + 1)
+
+    fig, (ax_t, ax_h) = plt.subplots(
+        ncols=2,
+        figsize=(9.0, 4.6),
+        gridspec_kw={"width_ratios": width_ratios, "wspace": 0.0},
+        sharey=True,
+    )
+
+    # time traces
+    line_handles = []
+    line_labels = []
+    for sim_number in stack_list:
+        t, x = series_by_sim[sim_number]
+        color, label, linestyle = resolve_style(style_map, sim_number, mixed_apo=mixed_apo)
+        if color is None:
+            color = _fallback_color_for_sim(sim_number, stack_list=stack_list)
+
+        ax_t.plot(t, x, color=color, alpha=trace_alpha)
+
+        y_sm = running_mean_rolling(x, window_frames=smooth_window_frames)
+        ls = linestyle if linestyle is not None else ("--" if "b" in sim_number else "-")
+        (ln,) = ax_t.plot(
+            t,
+            y_sm,
+            color=color,
+            alpha=1.0,
+            lw=2.2,
+            ls=ls,
+            label=label,
+        )
+        line_handles.append(ln)
+        line_labels.append(label)
+
+    ax_t.set_title(title, pad=scale * 2.5)
+    ax_t.set_xlabel("time (ns)", labelpad=scale * 0.8)
+    ax_t.set_ylabel(ylabel, labelpad=scale * 0.8)
+    ax_t.set_ylim(*y_lim_plot)
+
+    # sideways histogram
+    max_prob = 0.0
+    for sim_number in stack_list:
+        _t, x = series_by_sim[sim_number]
+        x = np.asarray(x)
+        if x.size == 0:
+            continue
+
+        w = np.ones_like(x, dtype=float) / float(len(x))
+        h, _ = np.histogram(x, bins=bins, weights=w)
+        if h.size:
+            max_prob = max(max_prob, float(np.nanmax(h)))
+
+        color, label, linestyle = resolve_style(style_map, sim_number, mixed_apo=mixed_apo)
+        if color is None:
+            color = _fallback_color_for_sim(sim_number, stack_list=stack_list)
+
+        hist_kwargs = {
+            "bins": bins,
+            "orientation": "horizontal",
+            "weights": w,
+            "color": color,
+            "alpha": hist_alpha,
+            "edgecolor": "black",
+            "linewidth": 2,
+        }
+        ls = linestyle if linestyle is not None else ("--" if "b" in sim_number else None)
+        if ls is not None:
+            hist_kwargs["linestyle"] = ls
+        ax_h.hist(x, **hist_kwargs)
+
+    ax_h.set_xlabel("Probability", labelpad=scale * 0.8)
+    ax_h.set_xlim(0, max(0.05, 1.1 * max_prob))
+
+    # legend on histogram panel (upper right)
+    ax_h.legend(
+        line_handles,
+        line_labels,
+        loc="upper right",
+        bbox_to_anchor=(0.98, 0.98),
+        borderaxespad=0.0,
+        frameon=True,
+        framealpha=0.85,
+        facecolor="white",
+        edgecolor="none",
+        ncol=legend_ncol,
+    )
+
+    # divider styling
+    ax_t.spines["right"].set_color("black")
+    ax_t.spines["right"].set_linewidth(divider_lw)
+    ax_h.spines["left"].set_visible(False)
+
+    fig.tight_layout(pad=0.9, w_pad=0.8, h_pad=0.8)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, format="png", dpi=300, bbox_inches="tight")
+    plt.show()
+
+    return None
 
 
 def running_mean_rolling(x: np.ndarray, window_frames: int) -> np.ndarray:

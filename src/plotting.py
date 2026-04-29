@@ -58,8 +58,7 @@ def plot_dist_time_trace_hist(
         fig, axs = plt.subplots(1, 2, figsize=(2 * 6.4, 6.4))
 
         if split_title:
-            axs[0].set_title(sim_name, pad=10)
-            axs[1].set_title(sim_name, pad=10)
+            fig.suptitle(sim_name, y=0.965)
         else:
             fig.suptitle(sim_name, y=0.92)
 
@@ -94,7 +93,7 @@ def plot_dist_time_trace_hist(
             axs[1].vlines(x_cutoff, 0, max_hist, color="k", linewidth=2)
             fig.text(0.5, -0.02, label_text, ha="center")
 
-        fig.tight_layout()
+        fig.tight_layout(rect=(0, 0.0, 1, 0.94))
         fig.savefig(png_out_path, format="png", dpi=300, bbox_inches="tight")
         print(f"Wrote to {png_out_path}")
         plt.show()

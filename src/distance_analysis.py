@@ -46,6 +46,9 @@ class DistanceAnalysisConfig:
     # Output
     out_dir: str
 
+    # Cache state (optional): sim_number -> CSV path
+    data_dict: Dict[str, str] = field(default_factory=dict)
+
     # Analysis parameters
     x_cutoff: Optional[float] = None
     partition: bool = False
@@ -163,6 +166,14 @@ def compute_distance_csvs(
 
         csv_path = save_var_to_file(x, time_factor, out_path)
         data_dict[sim_number] = csv_path
+
+    # Persist cache state so a single JSON per analysis folder can describe
+    # both configuration and which CSVs exist.
+    try:
+        cfg.data_dict = dict(data_dict)
+        cfg.save()
+    except Exception:
+        pass
 
     return data_dict
 

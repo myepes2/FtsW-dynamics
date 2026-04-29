@@ -53,7 +53,7 @@ class CatalyticFigureStyle:
     # divider
     divider_lw: float = 3.0
 
-    legend_mode: str = "above"  # 'above' or 'inside'
+    legend_mode: str = "above"  # 'above', 'inside', or 'hist'
     legend_ncol: int = 1
     legend_framealpha: float = 0.85
     legend_facecolor: str = "white"
@@ -177,6 +177,19 @@ def plot_catalytic_trace_plus_hist(
 
         if style.legend_mode == "inside":
             ax_t.legend(
+                loc="upper right",
+                bbox_to_anchor=(0.98, 0.98),
+                borderaxespad=0.0,
+                frameon=True,
+                framealpha=style.legend_framealpha,
+                facecolor=style.legend_facecolor,
+                edgecolor="none",
+                ncol=style.legend_ncol,
+            )
+        elif style.legend_mode == "hist":
+            ax_h.legend(
+                line_handles,
+                line_labels,
                 loc="upper right",
                 bbox_to_anchor=(0.98, 0.98),
                 borderaxespad=0.0,

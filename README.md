@@ -5,6 +5,9 @@ https://www.biorxiv.org/content/10.64898/2026.02.13.705525v1.full
 
 This repository contains analysis notebooks and reusable Python helpers for molecular dynamics (MD) simulations focused on **FtsW**, a bacterial membrane protein involved in septal peptidoglycan synthesis and cell division.
 
+<img width="1620" height="927" alt="image" src="https://github.com/user-attachments/assets/9c003b12-a845-4740-a438-8df983954948" />
+
+
 Because we run **many simulations** (different constructs/conditions/replicates, often with different trajectory lengths and file locations), the analysis must be **automated and index-driven**. The goal is to make it easy to:
 
 - calculate the same observable across many trajectories,

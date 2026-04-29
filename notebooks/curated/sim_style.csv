@@ -1,0 +1,26 @@
+sim_number,group,color,label_default,label_explicit,linestyle
+A,apo,#7f7f7f,"$\\mathrm{WT}$","$\\mathrm{WT}\\;(apo)$",
+B,apo,#E69F00,"$\\mathrm{FtsW^{E289G}}$","$\\mathrm{FtsW^{E289G}}\\;(apo)$",
+C,apo,,"$\\mathrm{WT+FtsN}$","$\\mathrm{WT+FtsN}\\;(apo)$",
+D,apo,,"$\\mathrm{FtsL^{R61E}}$","$\\mathrm{FtsL^{R61E}}\\;(apo)$",
+E,apo,,"$\\mathrm{FtsI^{R167S}}$","$\\mathrm{FtsI^{R167S}}\\;(apo)$",
+F,apo,,"$\\mathrm{FtsWI}$","$\\mathrm{FtsWI}\\;(apo)$",
+38,apo,,"$\\mathrm{WT}$","$\\mathrm{WT}\\;(apo)$",
+
+8,l2,#333333,"$\\mathrm{WT\\;(300K)}$","$\\mathbf{FtsWIQLB-L2^D-L2^A\\;(300K)}$",
+14,l2,#4d4d4d,"$\\mathrm{WT\\;(A)}$","$\\mathbf{FtsWIQLB-L2^D-L2^A\\;(A)}$",
+14b,l2,#a0a0a0,"$\\mathrm{WT\\;(B)}$","$\\mathbf{FtsWIQLB-L2^D-L2^A\\;(B)}$",--
+15,l2,#E69F00,"$\\mathrm{FtsW^{E289G}\\;(A)}$","$\\mathbf{FtsW^{E289G}IQLB-L2^D-L2^A\\;(A)}$",
+15b,l2,#E69F00,"$\\mathrm{FtsW^{E289G}\\;(B)}$","$\\mathbf{FtsW^{E289G}IQLB-L2^D-L2^A\\;(B)}$",--
+17,l2,#0072B2,"$\\mathrm{WT+FtsN}$","$\\mathbf{FtsWIQLBN^{58-108}-L2^D-L2^A\\;(0-1us)}$",
+17ext,l2,#1f4ed8,"$\\mathrm{WT+FtsN}\\;(1-4us)$","$\\mathbf{FtsWIQLBN^{58-108}-L2^D-L2^A\\;(1-4us)}$",
+17full,l2,#0072B2,"$\\mathrm{WT+FtsN}\\;(full)$","$\\mathbf{FtsWIQLBN^{58-108}-L2^D-L2^A}$",
+19,l2,,"$\\mathrm{Sim\\;19}$","$\\mathrm{Sim\\;19}$",
+53,l2,,"$\\mathrm{Sim\\;53}$","$\\mathbf{FtsW^{L198C+MTSES}IQLBN^{58-108}-L2^D-L2^A}$",
+54,l2,,"$\\mathrm{Sim\\;54}$","$\\mathrm{Sim\\;54}$",
+58,l2,,"$\\mathrm{Sim\\;58}$","$\\mathbf{FtsW^{ECL2\\ CC}IQLBN^{58-108}-L2^D-L2^A}$",
+
+42,l4,#00838F,"$\\mathrm{WT(L4^D)+FtsN}$","$\\mathbf{FtsWIQLBN^{58-108}-L4^D-L2^A}$",
+43,l32,#8E24AA,"$\\mathrm{WT(L32^D)+FtsN\\;(A)}$","$\\mathbf{FtsWIQLBN^{58-108}-L32^D-L2^A\\;(A)}$",
+43b,l32,#8E24AA,"$\\mathrm{WT(L32^D)+FtsN\\;(B)}$","$\\mathbf{FtsWIQLBN^{58-108}-L32^D-L2^A\\;(B)}$",--
+43c,l32,#8E24AA,"$\\mathrm{WT(L32^D)+FtsN\\;(C)}$","$\\mathbf{FtsWIQLBN^{58-108}-L32^D-L2^A\\;(C)}$",

@@ -67,6 +67,8 @@ The merged trace + sideways histogram figure is written as:
 
 - `<STACK_LIST>_<short_var_name>_trace_plus_hist.png`
 
+<img width="837" height="781" alt="image" src="https://github.com/user-attachments/assets/cc169350-93c3-4f9a-a865-7a5aab9807ba" />
+
 ## Repo hygiene
 
 Generated outputs (e.g. `outputs/`), caches (e.g. `__pycache__/`), and notebook checkpoints are ignored via `.gitignore`.

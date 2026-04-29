@@ -1,5 +1,7 @@
 # FtsW-dynamics
-Analysis Pipeline from Yepes Yehya 2026
+Analysis Pipeline from Yepes Yehya 2026:
+"Substrate binding and activation mechanism of the essential bacterial septal cell wall synthase FtsW"
+https://www.biorxiv.org/content/10.64898/2026.02.13.705525v1.full
 
 This repository contains analysis notebooks and reusable Python helpers for molecular dynamics (MD) simulations focused on **FtsW**, a bacterial membrane protein involved in septal peptidoglycan synthesis and cell division.
 
@@ -33,6 +35,13 @@ Start with:
 Key idea / take-home message:
 
 - You can compute **any distance** (or related geometric metric) as long as you can define the atom groups using **MDAnalysis selection strings**.
+
+Example (outer gate distance, L198–L236 Cα–Cα):
+
+```text
+res1 = (segid PROD PAG1 PAU1) and resid 198 and name CA
+res2 = (segid PROD PAG1 PAU1) and resid 236 and name CA
+```
 
 This notebook will:
 

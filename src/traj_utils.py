@@ -6,8 +6,8 @@ import pandas as pd
 import MDAnalysis as mda
 
 
-def validate_traj_index(csv_file: str) -> pd.DataFrame:
-    """Load an index CSV and return only rows with existing PSF/PDB and trajectory files.
+def validate_index_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Return only index rows with existing PSF/PDB and trajectory files.
 
     Expected columns (minimum):
     - sim_number
@@ -15,20 +15,11 @@ def validate_traj_index(csv_file: str) -> pd.DataFrame:
     - psf_path
     - dcd_path
     - time_factor
-
-    Notes
-    -----
-    This function intentionally does *not* open GUI dialogs. Provide `csv_file`.
     """
-
-    if csv_file is None or str(csv_file).strip() == "":
-        raise ValueError("csv_file must be provided (GUI selection is disabled in v2).")
-
-    df = pd.read_csv(csv_file)
 
     required_columns = {"sim_number", "sim_description", "psf_path", "dcd_path"}
     if not required_columns.issubset(df.columns):
-        raise ValueError(f"CSV file must contain the following columns: {required_columns}")
+        raise ValueError(f"Index must contain the following columns: {required_columns}")
 
     valid_entries = []
     for _, row in df.iterrows():
@@ -43,13 +34,27 @@ def validate_traj_index(csv_file: str) -> pd.DataFrame:
             if not dcd_exists:
                 print(f"Missing trajectory file (DCD): {row['dcd_path']}")
 
-    print(csv_file)
     valid_df = pd.DataFrame(valid_entries)
 
     if valid_df.empty:
         raise RuntimeError("No valid entries found. All files are missing.")
 
     return valid_df
+
+
+def validate_traj_index(index) -> pd.DataFrame:
+    """Validate an index source: a DataFrame from ``ftsw_data.load_index()``,
+    or a path to a legacy index CSV."""
+
+    if isinstance(index, pd.DataFrame):
+        return validate_index_df(index)
+
+    if index is None or str(index).strip() == "":
+        raise ValueError("index must be provided (GUI selection is disabled).")
+
+    df = pd.read_csv(index, dtype={"sim_number": str})
+    print(index)
+    return validate_index_df(df)
 
 
 def read_trajectory(df: pd.DataFrame, sim_number: str, in_memory: bool = True):

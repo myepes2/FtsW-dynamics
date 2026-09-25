@@ -1,0 +1,10 @@
+*Information about system
+*
+set PGNAME = l32
+set SEQFILENAME = custom_files/l32_seq.str
+set PATCHFILENAME = custom_files/l32_patch.str
+set NUMREPEATS = 16
+set NUMSUGARS = 32
+set PDBFILENAME = custom_files/49_acc_l32.pbd
+set EXPORTDIR = 49_acc_l32_export
+set EXPORTFN = 49_acc_l32_l32

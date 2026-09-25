@@ -24,6 +24,46 @@ This repo is primarily driven by Jupyter notebooks in `notebooks/` which import 
   conda activate ftsw-dynamics
   ```
 
+## Data layout (FTSW_DATA)
+
+Notebooks resolve all simulation data through `src/ftsw_data.py`. Set one
+environment variable per machine:
+
+```bash
+# Windows (PowerShell)
+$env:FTSW_DATA = "E:\Xiao Lab Dropbox\Martin Yepes\FtsW_MD_dryrun"
+# macOS/Linux
+export FTSW_DATA=/path/to/FtsW_MD
+```
+
+The data root is a manifest-driven tree:
+
+```text
+$FTSW_DATA/
+  manifest.yaml            # sim ids -> folder, variants, top/traj, time_factor
+  sims.csv                 # optional drop-in export (used if manifest missing)
+  sims/<id>_<name>/
+    proc/<variant>/        # topology + trajectory kept together
+    analysis/              # per-sim cached analysis CSVs live here
+  external/                # sims tracked elsewhere (e.g. Anton archive)
+  outputs/
+    dynamics/<observable>/           # cross-sim outputs + provenance.json
+    dynamics/<observable>/<stack>/   # stacked-histogram outputs
+```
+
+`ftsw_data.load_index()` builds the trajectory index (`sim_number`,
+`sim_description`, `psf_path`, `dcd_path`, `time_factor`) from `manifest.yaml`
+(or `sims.csv`), resolving relative paths to absolute at load time. No absolute
+paths are stored in the repo.
+
+Optional env vars:
+
+- `MDFOLDER` — root of the old MDfolder tree; used to find pre-migration caches
+  under `FtsW Manuscript/` (copied forward on first use, never modified) and
+  external sims' index paths. Falls back to walking up to a dir named
+  `MDfolder`.
+- `FTSW_INDEX_CSV` — explicit `sims.csv` path; bypasses the manifest.
+
 ## Running analyses
 
 ### 1) Residue distances (recommended starting point)
@@ -47,21 +87,22 @@ res2 = (segid PROD PAG1 PAU1) and resid 236 and name CA
 
 This notebook will:
 
-- read trajectories using an **index CSV** (see below),
-- compute (or reuse cached) per-simulation CSVs like `{sim}_{short_var_name}.csv`,
+- read trajectories via `ftsw_data.load_index()` (manifest-driven),
+- compute (or reuse cached) per-simulation CSVs like `{sim}_{short_var_name}.csv`
+  in `sims/<id>_<name>/analysis/`,
+- write cross-sim outputs to `outputs/dynamics/<observable>/` with a
+  `provenance.json` (sims, params, git sha),
 - and optionally generate per-simulation trace + histogram plots and summary tables.
 
 ### Stacked histograms (trace + histogram)
 
 - Open `notebooks/Stack_Histograms_v2.ipynb`.
-- Edit the **User inputs** cell (e.g. `STACK_LIST`, `PLOT_TYPE`, `NUM_BINS`).
+- Edit the **User inputs** cell: `STACK_LIST`, `SHORT_VAR_NAME`, `PLOT_TYPE`, `NUM_BINS`.
 - Run all cells.
 
-This notebook expects a folder that already contains per-simulation CSVs (typically produced by the residue-distance workflow above), plus optional metadata.
-
-Outputs are written under:
-
-- `outputs/stacked_histograms/<variable>/...`
+Per-sim CSVs are located automatically from `sims/<id>/analysis/` (plus the
+observable's `outputs/dynamics/<var>/` dir and legacy caches). Outputs go to
+`$FTSW_DATA/outputs/dynamics/<var>/<stack>/`.
 
 The merged trace + sideways histogram figure is written as:
 
@@ -73,16 +114,16 @@ The merged trace + sideways histogram figure is written as:
 
 Generated outputs (e.g. `outputs/`), caches (e.g. `__pycache__/`), and notebook checkpoints are ignored via `.gitignore`.
 
-## Trajectory index CSV
+## Trajectory index
 
-Several notebooks use a single **trajectory index CSV** to describe where each simulation’s topology/trajectory files live and how to interpret time.
+The index is built by `ftsw_data.load_index()` from `$FTSW_DATA/manifest.yaml`
+(or its `sims.csv` export). Columns:
 
-At minimum, the index CSV should contain columns:
-
-- `sim_number`
+- `sim_number` — string id (`14`, `14b`, `17ext`, `45_noW`, `62-gmx`, `A`–`F`)
 - `sim_description`
-- `psf_path` (or a topology path used by MDAnalysis)
-- `dcd_path` (trajectory path)
-- `time_factor` (to convert frames to time units)
+- `psf_path` / `dcd_path` — resolved absolute paths (manifest stores them relative)
+- `time_factor` — ns per frame
+- `variant`, `folder`, `engine` — extra manifest fields (ignored by older code)
 
-This indirection is what lets the same analysis code run across many simulations without hardcoding file paths inside each notebook.
+`traj_utils.validate_traj_index` accepts either this DataFrame or a legacy CSV
+path, so older index files still work via `FTSW_INDEX_CSV`.

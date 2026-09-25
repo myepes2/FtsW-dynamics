@@ -1,0 +1,9 @@
+*Information about system
+*
+set DONNAME = undpp
+set DIVNAME = 52_assembly
+set PROFN = 52_assembly/52_assembly_divisome
+set DONFN = 52_assembly/52_assembly_donor_undpp
+set ACCFN = 52_assembly/52_assembly_acceptor_l32
+set EXPORTDIR = 52_assembly_export
+set EXPORTFN = 52_assembled

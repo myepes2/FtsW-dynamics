@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -56,6 +58,7 @@ def calc_res_distance(u, dist_type: str, sel1: str, sel2: str) -> np.ndarray:
 def save_var_to_file(x: np.ndarray, time_factor: float, out_path: str, var_label: str = "X") -> str:
     t = np.arange(0, len(x)) * time_factor
 
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     df_x = pd.DataFrame({"Time": t, var_label: x})
     df_x.to_csv(out_path, index=False)
     print(f"Wrote to {out_path}")
@@ -74,6 +77,7 @@ def save_vars_to_file(time_factor: float, out_path: str, **series) -> str:
             raise ValueError(f"Length mismatch: '{name}' has length {len(arr)}, expected {n}.")
         data[name] = arr
 
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     df = pd.DataFrame(data)
     df.to_csv(out_path, index=False)
     print(f"Wrote to {out_path}")

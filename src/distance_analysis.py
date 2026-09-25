@@ -1,6 +1,8 @@
 import json
 import os
+import shutil
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -46,6 +48,14 @@ class DistanceAnalysisConfig:
     # Output
     out_dir: str
 
+    # Per-sim cache dirs (new layout): sim_number -> analysis dir.
+    # When a sim is present here, its cached CSV lives at
+    # ``sim_analysis_dirs[sim]/{sim}_{short_var_name}.csv`` instead of out_dir.
+    sim_analysis_dirs: Dict[str, str] = field(default_factory=dict)
+
+    # Legacy dirs scanned for pre-migration cached CSVs (read + copy forward).
+    legacy_dirs: List[str] = field(default_factory=list)
+
     # Cache state (optional): sim_number -> CSV path
     data_dict: Dict[str, str] = field(default_factory=dict)
 
@@ -64,7 +74,8 @@ class DistanceAnalysisConfig:
             out_csv = f"{sim_number}_{self.short_var_name}_byres.csv"
         else:
             out_csv = f"{sim_number}_{self.short_var_name}.csv"
-        return os.path.join(self.out_dir, out_csv)
+        sim_dir = self.sim_analysis_dirs.get(str(sim_number))
+        return os.path.join(sim_dir or self.out_dir, out_csv)
 
     def config_path(self, filename: Optional[str] = None) -> str:
         if filename is None:
@@ -141,6 +152,34 @@ def compute_distance_csvs(
 
         if os.path.exists(out_path) and not force_recompute:
             data_dict[sim_number] = out_path
+            continue
+
+        # Lazy migration: reuse a pre-migration cached CSV by copying it into
+        # the new per-sim location (CSVs are small).
+        migrated = False
+        if not force_recompute:
+            for legacy_dir in cfg.legacy_dirs:
+                legacy_dir = Path(legacy_dir)
+                legacy_path = legacy_dir / os.path.basename(out_path)
+                if not legacy_path.is_file() and legacy_dir.name == cfg.short_var_name:
+                    # Dir named after the observable but files may use a
+                    # different var token (e.g. 8_FtsW_L198-L236.csv inside
+                    # FtsW_L198_L236_Ca_dist/).
+                    byres = os.path.basename(out_path).endswith("_byres.csv")
+                    hits = sorted(
+                        h for h in legacy_dir.glob(f"{sim_number}_*.csv")
+                        if byres or not h.stem.endswith("_byres")
+                    )
+                    if hits:
+                        legacy_path = hits[0]
+                if legacy_path.is_file():
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    shutil.copy2(str(legacy_path), out_path)
+                    print(f"Migrated cache: {legacy_path} -> {out_path}")
+                    data_dict[sim_number] = out_path
+                    migrated = True
+                    break
+        if migrated:
             continue
 
         if sim_number not in sim_list:

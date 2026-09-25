@@ -1,0 +1,77 @@
+A worked example to make simulation 51:
+
+pymol session: manually dock L4 and L2 into PBP1B (pdb 5hlb). export 3 separate PDBs with PG following GLY and PA## nomenclature
+51_pbp1b.pdb
+51_donor_l4.pdb
+51_acceptor_l2.pdb
+
+charmm-gui: read and manipulate PBP1b pdb. apply terminal group patches and adjust protonation states. 
+    produces step1_pdbreader.psf, crd, pdb (in a tgz)
+
+    extract and rename to 51_pbp1b_cg.pdb, 51_pbp1b_cg.crd, 51_pbp1b_cg.psf
+
+charmm: upload 51_acceptor_l2.pdb and 51_donor_l4.pdb to custom_files folder
+    python setup_NPG.py 2 custom_files/51_donor_l4.pdb 
+    charmm < build_NPG.inp > build_NPG_51_donor.out
+    python setup_NPG.py 1 custom_files/51_acceptor_l2.pdb 
+    charmm < build_NPG.inp > build_NPG_51_acceptor.out
+
+each 51_donor_l4_export folder contains 51_donor_l4_l4 files (pdb, crd, psf) 
+-l4 used to make l4 (no chain extension)
+-51_donor_l4_32 would mean that l4 was used to make 51_donor_l4_32 (python setup_NPG.py 16 custom_files/51_donor_l4.pdb)
+
+download results
+
+make a new local folder, 51_assembly. combine files and manually rename
+
+    51_pbp1b_cg.crd, 51_pbp1b_cg.psf -> 51_assembly_divisome.psf, crd
+    51_donor_l4_l4.psf, crd -> 51_assembly_acceptor_l2.psf, crd
+    51_donor_l4_l4.psf, crd -> 51_assembly_donor_l4.psf, crd
+
+upload results
+
+python setup_assembly.py 2 51_assembly 
+    (breaks if "51_assembly/" is used)
+
+charmm < assemble_docked_divisome.inp > 51_assembly_export/assemble_docked_divisome.out
+
+download 51_assembly_export folder
+
+spot check structures in pymol
+
+run through charmm-gui multicomponent assembler
+    CG-MCA will always split molecules apart unless merged into one psf/crd 
+    CG-MCA will always identify unique segids and rename them according to its own internal logic
+    CG-MCA assumes all patches, termini, etc are correct and does not have this step
+
+=====Code analysis=======
+
+The two steps make too many folders and require too much manual renaming of files. 
+    51_donor_l4_export
+    51_acceptor_l2_export
+    51_assembly
+    51_assembly_export
+
+The second step is especially bad because it makes too many assumptions about the system
+    There won't always be a donor and an acceptor (but if there are they must follow the GLYA/GLYD convention)
+    The acceptor won't always be L2
+    The protein component won't always represent the whole divisome (like PBP1B)
+
+The external charmm-gui step cannot be skipped because the charmm scripts don't have patching functionality
+
+Solution: Prepare one folder per unique sim and run one setup script AFTER doing charmm-gui patching 
+
+    51_pbp1b_l4_l2
+        51_pbp1b_cg.psf
+        51_pbp1b_cg.crd
+        51_donor_l4.pdb
+        51_acceptor_l2.pdb
+
+Assembly script runs 
+    build NPG on L4
+    build NPG on L2
+    assemble psf/crd files together
+
+
+
+

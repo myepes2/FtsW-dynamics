@@ -1,0 +1,116 @@
+* Generate Divisome Docked with Nascent PG
+*
+
+! --- Topology/parameters ---
+stream toppar.str
+
+! --- Initialize important variables --- 
+stream divisome_vars.str
+
+!set DONNAME = l32
+!set DIVNAME = 43_151_memb
+!set PROFN = @DIVNAME_divisome/@DIVNAME_divisome
+!set DONFN = @DIVNAME_divisome/@DIVNAME_donor_@DONNAME
+!set ACCFN = @DIVNAME_divisome/@DIVNAME_acceptor_l2
+!set EXPORTDIR = @DIVNAME_divisome_export
+!set EXPORTFN = @DIVNAME_divisome_@DONNAME_assembled
+
+!! --- Build segments from sequences
+!stream @SEQFILENAME
+
+!! --- Apply all necessary patches
+!stream @PATCHFILENAME
+
+!! --- Angles/dihedrals after all patches ---
+!autogen angles dihe
+
+! == Load each system in its own segment ==
+! Segment: protein
+open unit 31 read card name @PROFN.psf
+read psf card unit 31
+open unit 31 read card name @PROFN.crd
+read coor card unit 31
+
+! Segment: PG donor
+open unit 41 read card name @DONFN.psf
+read psf card unit 41 append
+open unit 41 read card name @DONFN.crd
+read coor card unit 41 append
+
+! -- after reading L4.psf/crd --
+! rename GLY → GLYD
+rename segid GLYD sele segid GLY end
+
+! rename PA## → PD## (hardcoded for 99 sugars max)
+stream rename_donor_segments.str
+
+! Segment: PG acceptor
+open unit 51 read card name @ACCFN.psf
+read psf card unit 51 append
+open unit 51 read card name @ACCFN.crd
+read coor card unit 51 append
+
+! -- after reading L2.psf/crd --
+rename segid GLYA sele segid GLY end
+
+label printsegs
+define ALLSEGS sele all end
+coor stat sele ALLSEGS end
+
+! OPTIONAL: check and print system summary
+print coor
+print psf
+
+! --- Write outputs ---
+open write unit 61 card name @EXPORTDIR/@EXPORTFN.psf
+write psf  card unit 61
+close unit 61
+
+open write unit 62 card name @EXPORTDIR/@EXPORTFN.crd
+write coor card unit 62
+close unit 62
+
+open write unit 63 card name @EXPORTDIR/@EXPORTFN.pdb
+write coor pdb unit 63
+close unit 63
+
+bomlev -1
+
+coor orient
+coor stat sele all end
+
+! Molecular Volume
+calc dcel = 0.5
+calc xdim = int ( ( ?xmax - ?xmin + 5.0 ) / @dcel ) + 1
+calc ydim = int ( ( ?ymax - ?ymin + 5.0 ) / @dcel ) + 1
+calc zdim = int ( ( ?zmax - ?zmin + 5.0 ) / @dcel ) + 1
+calc space = @xdim * @ydim * @zdim
+
+! prevent overflow on integer conversion
+calc maxint = 2**32 / 2 - 1
+if space .gt. @maxint calc space = @maxint
+
+scalar wmain = radius
+scalar wmain add 1.4    ! use solvent accessible surface for molecular volume
+scalar 1 = wmain 
+scalar 2 set 6
+coor volume hole space @space sele .not. resname TIP3 end
+set molvol = ?volume
+
+calc cgtot = int ( ?cgtot )
+
+open write unit 90 card name @EXPORTDIR/@EXPORTFN.str
+write title unit 90
+* set ncharge = @cgtot
+* set xmax = ?xmax
+* set ymax = ?ymax
+* set zmax = ?zmax
+* set xmin = ?xmin
+* set ymin = ?ymin
+* set zmin = ?zmin
+* set molvol = @molvol
+*
+
+stop
+
+
